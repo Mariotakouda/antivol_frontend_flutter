@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="YaKo — retrouvez vos objets perdus.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="YaKo">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>YaKo</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <!-- Écran de chargement natif, affiché instantanément le temps que le
+       moteur Flutter Web démarre (avant que le SplashScreen Dart existe).
+       Il se retire tout seul à l'événement 'flutter-first-frame'. -->
+  <style>
+    #native-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #009E60;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    }
+    #native-splash img {
+      width: 250px;
+      height: 250px;
+      object-fit: contain;
+    }
+    #native-splash .title {
+      margin-top: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    #native-splash .spinner {
+      margin-top: 24px;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: native-splash-spin 0.8s linear infinite;
+    }
+    @keyframes native-splash-spin {
+      to { transform: rotate(360deg); }
+    }
+    #native-splash.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+  <div id="native-splash">
+    <img src="assets/assets/images/logoanti.png" alt="YaKo" onerror="this.style.display='none'">
+    <!-- <div class="title">YaKo</div> -->
+    <div class="spinner"></div>
+  </div>
+  <script>
+    // Flutter déclenche cet événement sur window juste après avoir peint sa
+    // toute première frame — c'est le bon moment pour retirer l'écran natif.
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('native-splash');
+      if (!splash) return;
+      splash.classList.add('fade-out');
+      setTimeout(function () { splash.remove(); }, 300);
+    });
+  </script>
+
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
