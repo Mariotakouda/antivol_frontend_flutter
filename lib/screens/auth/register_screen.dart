@@ -89,14 +89,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // En-tête : logo + titre + sous-titre
-                Center(
-                  child: Image.asset(
-                    'assets/images/logoanti.png',
-                    height: 96,
-                    fit: BoxFit.contain,
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.stackMd),
                 const Text(
                   'Inscription',

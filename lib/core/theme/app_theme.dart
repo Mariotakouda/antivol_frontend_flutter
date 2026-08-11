@@ -1,11 +1,11 @@
-// Thème AntiVole — généré à partir du DESIGN.md exporté depuis Google Stitch.
+// Thème AntiVole — identité graphique Togo (drapeau).
 // Règle de couleurs 60/30/10 :
 //  - 60% Fond      -> AppColors.background / surface
-//  - 30% Structure -> AppColors.primary (Vert Ivoirien #009E60)
-//  - 10% Accent    -> AppColors.accent  (Orange Ivoirien #F77F00)
+//  - 30% Structure -> AppColors.primary (Vert Forêt togolais #006A4E)
+//  - 10% Accent    -> AppColors.accent  (Or togolais #FFD100)
 import 'package:flutter/material.dart';
 
-/// Couleurs exactes issues de DESIGN.md (section "Colors").
+/// Couleurs officielles du drapeau togolais.
 class AppColors {
   AppColors._();
 
@@ -17,33 +17,33 @@ class AppColors {
   static const Color surfaceContainerHigh = Color(0xFFE7E8E9);
   static const Color surfaceDim = Color(0xFFD9DADB);
 
-  // --- Structure & Textes (30%) : Vert Ivoirien ---
-  static const Color primary = Color(0xFF009E60);
+  // --- Structure & Textes (30%) : Vert Forêt togolais ---
+  static const Color primary = Color(0xFF006A4E);
   static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color primaryContainer = Color(0xFF008651);
-  static const Color onPrimaryContainer = Color(0xFFF6FFF5);
+  static const Color primaryContainer = Color(0xFF00543E);
+  static const Color onPrimaryContainer = Color(0xFFF6FFF9);
   static const Color onSurface = Color(0xFF191C1D);
   static const Color onSurfaceVariant = Color(0xFF3D4A40);
   static const Color outline = Color(0xFF6D7A70);
   static const Color outlineVariant = Color(0xFFBCCABE);
 
-  // --- Accent (10%) : Orange Ivoirien — CTA principal uniquement ---
-  static const Color accent = Color(0xFFF77F00);
-  static const Color onAccent = Color(0xFFFFFFFF);
-  static const Color accentContainer = Color(0xFFFF850D);
-  static const Color onAccentContainer = Color(0xFF602E00);
+  // --- Accent (10%) : Or togolais — CTA principal uniquement ---
+  static const Color accent = Color(0xFFFFD100);
+  static const Color onAccent = Color(0xFF191C1D); // texte foncé, l'or est trop clair pour du blanc
+  static const Color accentContainer = Color(0xFFE6BC00);
+  static const Color onAccentContainer = Color(0xFF3D2E00);
 
   // --- Statuts sémantiques ---
   static const Color success = primary; // Retrouvé / Validé / Vérifié
   static const Color warning = accent; // En attente / Urgent
-  static const Color error = Color(0xFFEF4444); // Perdu / Refuser / Supprimer
-  static const Color errorContainer = Color(0xFFFFDAD6);
-  static const Color onErrorContainer = Color(0xFF93000A);
+  static const Color error = Color(0xFFD21034); // Rouge togolais — Perdu / Refuser / Supprimer
+  static const Color errorContainer = Color(0xFFFFDAD9);
+  static const Color onErrorContainer = Color(0xFF5C0009);
 
   // --- Chips de statut (fond clair 10% opacité + texte coloré) ---
-  static const Color statusGreenBg = Color(0x1A009E60);
-  static const Color statusOrangeBg = Color(0x1AFF7F00);
-  static const Color statusRedBg = Color(0x1AEF4444);
+  static const Color statusGreenBg = Color(0x1A006A4E);
+  static const Color statusOrangeBg = Color(0x33FFD100);
+  static const Color statusRedBg = Color(0x1AD21034);
 }
 
 /// Rayons de bordure (section "Shapes" de DESIGN.md).
@@ -70,11 +70,11 @@ class AppSpacing {
   static const double stackLg = 24;
 }
 
-/// Typographie Inter (section "Typography").
+/// Typographie Roboto.
 class AppTextStyles {
   AppTextStyles._();
 
-  static const String fontFamily = 'Inter';
+  static const String fontFamily = 'Roboto';
 
   static const TextStyle displayLg = TextStyle(
     fontFamily: fontFamily,

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../core/storage/onboarding_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../../widgets/logo_anime.dart';
 import '../home/home_screen.dart';
 
-/// Ecran affiché uniquement au tout premier lancement de l'app : 3 slides
-/// explicatives (signalement, matching IA, messagerie sécurisée),
-/// swipeables, avec pagination par points et bouton "Passer" / "Commencer".
+/// Ecran affiché uniquement au tout premier lancement de l'app : une page
+/// d'intro avec le logo animé, suivie de 3 slides explicatives (signalement,
+/// matching IA, messagerie sécurisée), swipeables, avec pagination par
+/// points et bouton "Passer" / "Commencer".
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -51,6 +53,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
+  // +1 pour la page logo, insérée avant les slides de contenu (index 0).
+  int get _totalPages => _slides.length + 1;
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -66,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _suivant() {
-    if (_page == _slides.length - 1) {
+    if (_page == _totalPages - 1) {
       _terminer();
       return;
     }
@@ -76,21 +81,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  void _precedent() {
+    if (_page == 0) return;
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final estDerniere = _page == _slides.length - 1;
+    final estDerniere = _page == _totalPages - 1;
+    final estPremiere = _page == 0;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Column(
           children: [
-            // Bouton "Passer" en haut à droite (masqué sur la dernière slide)
+            // Bouton retour à gauche (masqué sur la page logo, rien avant),
+            // bouton "Passer" à droite (masqué sur la dernière slide).
             Padding(
               padding: const EdgeInsets.all(AppSpacing.containerPadding),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Opacity(
+                    opacity: estPremiere ? 0 : 1,
+                    child: IconButton(
+                      onPressed: estPremiere ? null : _precedent,
+                      icon: const Icon(Icons.arrow_back),
+                      tooltip: 'Précédent',
+                    ),
+                  ),
                   Opacity(
                     opacity: estDerniere ? 0 : 1,
                     child: TextButton(
@@ -104,9 +127,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _slides.length,
+                itemCount: _totalPages,
                 onPageChanged: (index) => setState(() => _page = index),
-                itemBuilder: (context, index) => _buildSlide(_slides[index]),
+                itemBuilder: (context, index) =>
+                    index == 0 ? _buildLogoSlide() : _buildSlide(_slides[index - 1]),
               ),
             ),
             // Pagination + bouton d'action
@@ -121,7 +145,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_slides.length, (index) {
+                    children: List.generate(_totalPages, (index) {
                       final actif = index == _page;
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
@@ -154,49 +178,55 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  /// Première page de l'onboarding : juste le logo animé (même widget que
+  /// l'écran de démarrage), en guise d'accueil avant les slides explicatives.
+  Widget _buildLogoSlide() {
+    return const Center(
+      child: LogoAnime(width: 260, height: 130),
+    );
+  }
+
   Widget _buildSlide(_OnboardingSlide slide) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final petitEcran = screenWidth < 380;
 
-    return Padding(
+    final tailleCercle = petitEcran ? 150.0 : 220.0;
+    final tailleIcone = petitEcran ? 64.0 : 96.0;
+    final tailleTitre = petitEcran ? 16.0 : AppTextStyles.headlineMd.fontSize;
+    final tailleDescription = petitEcran ? 13.0 : AppTextStyles.bodyLg.fontSize;
+
+    return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
-        horizontal: screenWidth < 380 ? 8 : AppSpacing.containerPadding,
+        horizontal: petitEcran ? 8 : AppSpacing.containerPadding,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Illustration
           Container(
-            width: 220,
-            height: 220,
-            margin: const EdgeInsets.only(bottom: AppSpacing.stackLg),
-            decoration: BoxDecoration(
+            width: tailleCercle,
+            height: tailleCercle,
+            margin: EdgeInsets.symmetric(
+              vertical: petitEcran ? AppSpacing.stackMd : AppSpacing.stackLg,
+            ),
+            decoration: const BoxDecoration(
               color: AppColors.statusGreenBg,
               shape: BoxShape.circle,
             ),
-            child: Icon(slide.icon, size: 96, color: AppColors.primary),
+            child: Icon(slide.icon, size: tailleIcone, color: AppColors.primary),
           ),
           Text(
             slide.title,
             textAlign: TextAlign.center,
-            style: AppTextStyles.headlineMd.copyWith(
-              fontSize: screenWidth < 380
-                  ? 18
-                  : AppTextStyles.headlineMd.fontSize,
-            ),
+            style: AppTextStyles.headlineMd.copyWith(fontSize: tailleTitre),
           ),
-          const SizedBox(height: AppSpacing.stackMd),
-          Flexible(
-            child: SingleChildScrollView(
-              child: Text(
-                slide.description,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyLg.copyWith(
-                  fontSize: screenWidth < 380
-                      ? 14
-                      : AppTextStyles.bodyLg.fontSize,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
+          SizedBox(height: petitEcran ? AppSpacing.stackSm : AppSpacing.stackMd),
+          Text(
+            slide.description,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyLg.copyWith(
+              fontSize: tailleDescription,
+              color: AppColors.onSurfaceVariant,
             ),
           ),
         ],

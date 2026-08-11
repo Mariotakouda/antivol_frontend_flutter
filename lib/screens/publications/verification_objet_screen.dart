@@ -66,8 +66,15 @@ class _VerificationObjetScreenState extends State<VerificationObjetScreen> {
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: const Text('Vérification rapide'),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color.fromARGB(0, 248, 247, 247),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, 
+          color: Colors.green,
+          ),
+          tooltip: 'Retour',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SafeArea(
         child: Padding(

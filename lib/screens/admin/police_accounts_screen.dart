@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/errors/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../services/admin_service.dart';
@@ -25,6 +26,21 @@ class _PoliceAccountsScreenState extends State<PoliceAccountsScreen> {
   void initState() {
     super.initState();
     _charger();
+  }
+
+  Future<void> _ouvrirDetailAgent(UserModel agent) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _FicheDetailAgent(
+        agent: agent,
+        onRevoquer: () {
+          Navigator.of(sheetContext).pop();
+          _revoquer(agent);
+        },
+      ),
+    );
   }
 
   Future<void> _charger() async {
@@ -121,49 +137,49 @@ class _PoliceAccountsScreenState extends State<PoliceAccountsScreen> {
                     itemCount: _agents.length,
                     itemBuilder: (context, index) {
                       final agent = _agents[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.stackSm),
-                        padding: const EdgeInsets.all(AppSpacing.gutter),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(color: AppColors.surfaceContainer),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                color: AppColors.statusGreenBg,
-                                shape: BoxShape.circle,
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        onTap: () => _ouvrirDetailAgent(agent),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: AppSpacing.stackSm),
+                          padding: const EdgeInsets.all(AppSpacing.gutter),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            border: Border.all(color: AppColors.surfaceContainer),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.statusGreenBg,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.local_police_outlined, color: AppColors.primary),
                               ),
-                              child: const Icon(Icons.local_police_outlined, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: AppSpacing.gutter),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(agent.nomComplet, style: AppTextStyles.labelLg),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Matricule ${agent.matricule ?? '—'} · ${agent.posteRattachement ?? '—'}',
-                                    style: AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant),
-                                  ),
-                                  Text(
-                                    agent.telephone,
-                                    style: AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant),
-                                  ),
-                                ],
+                              const SizedBox(width: AppSpacing.gutter),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(agent.nomComplet, style: AppTextStyles.labelLg),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Matricule ${agent.matricule ?? '—'} · ${agent.posteRattachement ?? '—'}',
+                                      style: AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant),
+                                    ),
+                                    Text(
+                                      agent.telephone,
+                                      style: AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.person_remove_outlined, color: AppColors.error),
-                              tooltip: 'Révoquer l\'accès',
-                              onPressed: () => _revoquer(agent),
-                            ),
-                          ],
+                              const Icon(Icons.chevron_right, color: AppColors.onSurfaceVariant),
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -207,12 +223,13 @@ class _FormulaireCreationAgentState extends State<_FormulaireCreationAgent> {
   }
 
   Future<void> _creer() async {
+    if (_envoiEnCours) return; // garde anti-double-clic (double-tap rapide sur web)
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _envoiEnCours = true);
 
     try {
-      await _service.creerCompteApolice(
+      final agent = await _service.creerCompteApolice(
         nom: _nomController.text.trim(),
         prenom: _prenomController.text.trim(),
         telephone: _telephoneController.text.trim(),
@@ -222,17 +239,48 @@ class _FormulaireCreationAgentState extends State<_FormulaireCreationAgent> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-          'Compte créé. Communique le mot de passe à l\'agent : ${_passwordController.text}',
-        )),
+      setState(() => _envoiEnCours = false);
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          icon: const Icon(Icons.check_circle_outline, color: AppColors.primary, size: 32),
+          title: const Text('Compte créé'),
+          content: Text(
+            '${agent.nomComplet} peut maintenant se connecter avec le téléphone '
+            '${agent.telephone} et le mot de passe que tu lui communiques : '
+            '${_passwordController.text}',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // ferme le dialogue
+                Navigator.of(context).pop(true); // ferme le formulaire, retour à la liste
+              },
+              child: const Text('Retour à la liste'),
+            ),
+          ],
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _envoiEnCours = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Création impossible (téléphone ou matricule déjà utilisé ?)')),
+      final message = e is ApiException ? e.toString() : 'Création impossible.';
+
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          icon: const Icon(Icons.error_outline, color: AppColors.error, size: 32),
+          title: const Text('Échec de la création'),
+          content: Text(message),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(), // reste sur le formulaire pour corriger
+              child: const Text('Retour au formulaire'),
+            ),
+          ],
+        ),
       );
     }
   }
@@ -269,7 +317,18 @@ class _FormulaireCreationAgentState extends State<_FormulaireCreationAgent> {
                     ),
                   ),
                 ),
-                const Text('Nouveau compte Police', style: AppTextStyles.headlineSm),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('Nouveau compte Police', style: AppTextStyles.headlineSm),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Fermer',
+                      onPressed: _envoiEnCours ? null : () => Navigator.of(context).pop(false),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: AppSpacing.stackSm),
                 Text(
                   'À ne créer qu\'après avoir vérifié l\'identité de l\'agent (badge, poste).',
@@ -330,6 +389,113 @@ class _FormulaireCreationAgentState extends State<_FormulaireCreationAgent> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Fiche détaillée d'un agent, ouverte en tapant sur une ligne de la liste.
+/// Lecture seule (pas d'édition ici) + accès rapide à la révocation.
+class _FicheDetailAgent extends StatelessWidget {
+  final UserModel agent;
+  final VoidCallback onRevoquer;
+
+  const _FicheDetailAgent({required this.agent, required this.onRevoquer});
+
+  Widget _ligne(String label, String valeur) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.stackMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant)),
+          const SizedBox(height: 2),
+          Text(valeur, style: AppTextStyles.bodyMd),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.containerPadding,
+        AppSpacing.stackMd,
+        AppSpacing.containerPadding,
+        AppSpacing.stackLg,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.stackMd),
+                decoration: BoxDecoration(
+                  color: AppColors.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    color: AppColors.statusGreenBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.local_police_outlined, color: AppColors.primary, size: 28),
+                ),
+                const SizedBox(width: AppSpacing.gutter),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(agent.nomComplet, style: AppTextStyles.headlineSm),
+                      Text(
+                        agent.statut == 'Actif' ? 'Compte actif' : agent.statut,
+                        style: AppTextStyles.labelSm.copyWith(
+                          color: agent.statut == 'Actif' ? AppColors.primary : AppColors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Fermer',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.stackLg),
+            _ligne('Téléphone', agent.telephone),
+            _ligne('Matricule', agent.matricule ?? '—'),
+            _ligne('Poste de rattachement', agent.posteRattachement ?? '—'),
+            _ligne('Ville', agent.ville),
+            if (agent.email != null && agent.email!.isNotEmpty) _ligne('Email', agent.email!),
+            _ligne('Téléphone vérifié', agent.telephoneVerifie ? 'Oui' : 'Non'),
+            const SizedBox(height: AppSpacing.stackMd),
+            OutlinedButton.icon(
+              onPressed: onRevoquer,
+              icon: const Icon(Icons.person_remove_outlined, color: AppColors.error),
+              label: const Text('Révoquer l\'accès', style: TextStyle(color: AppColors.error)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.error),
+                minimumSize: const Size.fromHeight(48),
+              ),
+            ),
+          ],
         ),
       ),
     );

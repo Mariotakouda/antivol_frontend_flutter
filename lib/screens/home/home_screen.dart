@@ -505,8 +505,8 @@ class _YaKoWordmark extends StatelessWidget {
       // dans le fichier image. Ajuste la valeur (en pixels) au besoin.
       offset: const Offset(-8, 0),
       child: Image.asset(
-        'assets/images/logoanti.png',
-        height: 74,
+        'assets/images/logo2.png',
+        height: 90,
         fit: BoxFit.contain,
       ),
     );

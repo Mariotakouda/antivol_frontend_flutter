@@ -14,6 +14,7 @@ class UserModel {
   final int scoreConfiance;
   final bool telephoneVerifie;
   final bool emailVerifie;
+  final DateTime? createdAt;
 
   UserModel({
     required this.id,
@@ -31,6 +32,7 @@ class UserModel {
     required this.scoreConfiance,
     required this.telephoneVerifie,
     required this.emailVerifie,
+    this.createdAt,
   });
 
   String get nomComplet => '$prenom $nom';
@@ -49,9 +51,10 @@ class UserModel {
       matricule: json['matricule'] as String?,
       posteRattachement: json['poste_rattachement'] as String?,
       statut: json['statut'] as String,
-      scoreConfiance: json['score_confiance'] as int,
-      telephoneVerifie: json['telephone_verifie'] as bool,
-      emailVerifie: json['email_verifie'] as bool,
+      scoreConfiance: (json['score_confiance'] as int?) ?? 0,
+      telephoneVerifie: (json['telephone_verifie'] as bool?) ?? false,
+      emailVerifie: (json['email_verifie'] as bool?) ?? false,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
     );
   }
 }

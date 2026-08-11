@@ -59,8 +59,8 @@ class _SearchScreenState extends State<SearchScreen> {
             hintText: 'Rechercher un objet...',
             border: InputBorder.none,
           ),
-          style: const TextStyle(color: Colors.white, fontSize: 18),
-          cursorColor: Colors.white,
+          style: const TextStyle(color: Color.fromARGB(255, 7, 7, 7), fontSize: 18),
+          cursorColor: const Color.fromARGB(255, 214, 213, 213),
           onSubmitted: (_) => _rechercher(),
         ),
         actions: [

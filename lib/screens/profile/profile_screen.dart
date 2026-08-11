@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../admin/admin_dashboard_screen.dart';
-import '../home/home_screen.dart';
+import '../publications/verification_objet_screen.dart';
 import '../verification/verification_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -148,6 +148,14 @@ class ProfileScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const VerificationScreen()),
                   ),
                 ),
+                _TuileMenu(
+                  icone: Icons.qr_code_scanner_outlined,
+                  titre: 'Vérifier un objet',
+                  sousTitre: 'Plaque ou numéro de série — utile en contrôle',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const VerificationObjetScreen()),
+                  ),
+                ),
                 if (utilisateur.role == 'Admin')
                   _TuileMenu(
                     icone: Icons.admin_panel_settings_outlined,
@@ -164,10 +172,12 @@ class ProfileScreen extends StatelessWidget {
                     onPressed: () async {
                       await authProvider.deconnecter();
                       if (!context.mounted) return;
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        (route) => false,
-                      );
+                      // On revient à l'écran d'accueil déjà existant (route
+                      // racine) plutôt que d'en pousser un nouveau : ça évite
+                      // une double transition qui laissait apparaître un
+                      // flash de la bannière "Connexion / S'inscrire" sur
+                      // l'ancien HomeScreen pendant l'animation.
+                      Navigator.of(context).popUntil((route) => route.isFirst);
                     },
                     icon: const Icon(Icons.logout),
                     label: const Text('Se déconnecter'),

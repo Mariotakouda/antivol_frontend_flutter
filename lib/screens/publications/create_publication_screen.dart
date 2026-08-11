@@ -361,7 +361,7 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
             const SizedBox(height: AppSpacing.gutter),
             CustomTextField(controller: _numeroSerieController, label: 'Numéro de série'),
             const SizedBox(height: AppSpacing.gutter),
-            CustomTextField(controller: _plaqueController, label: 'Plaque (véhicule)'),
+            CustomTextField(controller: _plaqueController, label: 'Plaque (Ex: TG 1234 AB,)'),
             const SizedBox(height: AppSpacing.gutter),
             CustomTextField(controller: _etatController, label: 'État (neuf, usagé...)'),
           ],
