@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/errors/api_exception.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/schema_champs_model.dart';
 import '../../providers/categorie_provider.dart';
 import '../../services/publication_service.dart';
 import '../../widgets/custom_text_field.dart';
@@ -13,6 +14,9 @@ import '../../widgets/primary_button.dart';
 import 'location_picker_screen.dart';
 
 /// Formulaire de création d'une publication (objet perdu ou trouvé).
+/// Les champs "Détails spécifiques" changent dynamiquement selon la
+/// catégorie ET le type (PERDU/TROUVE) choisis — voir
+/// config/publication_champs.php côté Laravel pour le schéma complet.
 /// Retourne `true` via Navigator.pop si la publication a bien été créée,
 /// pour que l'écran appelant sache qu'il doit rafraîchir sa liste.
 class CreatePublicationScreen extends StatefulWidget {
@@ -32,31 +36,31 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = PublicationService();
   final _picker = ImagePicker();
-
   final _titreController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _marqueController = TextEditingController();
-  final _modeleController = TextEditingController();
-  final _couleurController = TextEditingController();
-  final _numeroSerieController = TextEditingController();
-  final _plaqueController = TextEditingController();
-  final _etatController = TextEditingController();
   final _recompenseController = TextEditingController();
+  final Map<String, TextEditingController> _controllersStructures = {};
+  final Map<String, TextEditingController> _controllersJson = {};
+  final Map<String, String?> _valeursSelect = {};
+  final Map<String, bool> _valeursBooleennes = {};
 
   String _type = 'PERDU';
   late int? _categorieId = widget.categorieInitialeId;
   DateTime _dateEvenement = DateTime.now();
   LieuSelectionne? _lieu;
   final List<XFile> _images = [];
-  bool _detailsOuverts = false;
   bool _envoiEnCours = false;
   String? _erreur;
+
+  SchemaChamps? _schema;
+  bool _chargementSchema = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategorieProvider>().chargerSiNecessaire();
+      _chargerSchema();
     });
   }
 
@@ -64,14 +68,54 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
   void dispose() {
     _titreController.dispose();
     _descriptionController.dispose();
-    _marqueController.dispose();
-    _modeleController.dispose();
-    _couleurController.dispose();
-    _numeroSerieController.dispose();
-    _plaqueController.dispose();
-    _etatController.dispose();
     _recompenseController.dispose();
+    for (final c in _controllersStructures.values) {
+      c.dispose();
+    }
+    for (final c in _controllersJson.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController _controllerStructure(String cle) {
+    return _controllersStructures.putIfAbsent(cle, () => TextEditingController());
+  }
+
+  TextEditingController _controllerJson(String cle) {
+    return _controllersJson.putIfAbsent(cle, () => TextEditingController());
+  }
+
+  Future<void> _chargerSchema() async {
+    if (_categorieId == null) {
+      setState(() => _schema = null);
+      return;
+    }
+
+    setState(() => _chargementSchema = true);
+    try {
+      final schema = await _service.champsPour(categorieId: _categorieId!, type: _type);
+      if (!mounted) return;
+      setState(() => _schema = schema);
+    } catch (_) {
+      if (!mounted) return;
+      // Formulaire toujours utilisable même si le schéma ne charge pas —
+      // juste sans les champs spécifiques à la catégorie.
+      setState(() => _schema = null);
+    } finally {
+      if (mounted) setState(() => _chargementSchema = false);
+    }
+  }
+
+  void _changerCategorie(int? valeur) {
+    setState(() => _categorieId = valeur);
+    _chargerSchema();
+  }
+
+  void _changerType(String valeur) {
+    if (_type == valeur) return;
+    setState(() => _type = valeur);
+    _chargerSchema();
   }
 
   Future<void> _choisirDate() async {
@@ -106,6 +150,35 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
     setState(() => _images.removeAt(index));
   }
 
+  /// Construit le Map à envoyer comme `caracteristiques` (JSON) à partir
+  /// des champs dynamiques actuellement affichés dans le schéma.
+  Map<String, dynamic> _construireCaracteristiques() {
+    if (_schema == null) return {};
+
+    final resultat = <String, dynamic>{};
+    for (final champ in _schema!.json) {
+      switch (champ.type) {
+        case 'select':
+          final valeur = _valeursSelect[champ.cle];
+          if (valeur != null && valeur.isNotEmpty) resultat[champ.cle] = valeur;
+          break;
+        case 'boolean':
+          resultat[champ.cle] = _valeursBooleennes[champ.cle] ?? false;
+          break;
+        case 'number':
+          final texte = _controllerJson(champ.cle).text.trim();
+          if (texte.isNotEmpty) {
+            resultat[champ.cle] = num.tryParse(texte) ?? texte;
+          }
+          break;
+        default: // text, textarea
+          final texte = _controllerJson(champ.cle).text.trim();
+          if (texte.isNotEmpty) resultat[champ.cle] = texte;
+      }
+    }
+    return resultat;
+  }
+
   Future<void> _soumettre() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -130,12 +203,11 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
         titre: _titreController.text.trim(),
         description: _descriptionController.text.trim(),
         type: _type,
-        marque: _marqueController.text.trim(),
-        modele: _modeleController.text.trim(),
-        couleur: _couleurController.text.trim(),
-        numeroSerie: _numeroSerieController.text.trim(),
-        plaque: _plaqueController.text.trim(),
-        etat: _etatController.text.trim(),
+        marque: _controllersStructures['marque']?.text.trim(),
+        modele: _controllersStructures['modele']?.text.trim(),
+        couleur: _controllersStructures['couleur']?.text.trim(),
+        numeroSerie: _controllersStructures['numero_serie']?.text.trim(),
+        plaque: _controllersStructures['plaque']?.text.trim(),
         dateEvenement: _dateEvenement,
         latitude: _lieu!.latitude,
         longitude: _lieu!.longitude,
@@ -144,6 +216,7 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
         ville: _lieu!.ville,
         pays: _lieu!.pays,
         recompense: recompenseTexte.isNotEmpty ? double.tryParse(recompenseTexte) : null,
+        caracteristiques: _construireCaracteristiques(),
         images: _images,
       );
 
@@ -175,7 +248,7 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
             const SizedBox(height: AppSpacing.stackMd),
             CustomTextField(
               controller: _titreController,
-              label: 'Titre (ex : iPhone 13 noir)',
+              label: 'Le nom de l\'objet perdu',
               prefixIcon: Icons.title_outlined,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Le titre est obligatoire' : null,
             ),
@@ -198,8 +271,8 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
               keyboardType: TextInputType.number,
               prefixIcon: Icons.card_giftcard_outlined,
             ),
-            const SizedBox(height: AppSpacing.stackSm),
-            _buildDetailsSupplementaires(),
+            const SizedBox(height: AppSpacing.stackLg),
+            _buildChampsDynamiques(),
             const SizedBox(height: AppSpacing.stackLg),
             _buildSectionPhotos(),
             const SizedBox(height: AppSpacing.stackLg),
@@ -251,7 +324,7 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
     final selectionne = _type == valeur;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _type = valeur),
+        onTap: () => _changerType(valeur),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -288,7 +361,8 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
           items: categorieProvider.categories
               .map((c) => DropdownMenuItem(value: c.id, child: Text(c.nom)))
               .toList(),
-          onChanged: (valeur) => setState(() => _categorieId = valeur),
+          onChanged: _changerCategorie,
+          validator: (v) => v == null ? 'Choisis une catégorie' : null,
         );
       },
     );
@@ -331,43 +405,107 @@ class _CreatePublicationScreenState extends State<CreatePublicationScreen> {
     );
   }
 
-  Widget _buildDetailsSupplementaires() {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: ExpansionTile(
-          title: Text('Détails supplémentaires (optionnel)', style: AppTextStyles.labelLg),
-          iconColor: AppColors.primary,
-          collapsedIconColor: AppColors.onSurfaceVariant,
-          initiallyExpanded: _detailsOuverts,
-          onExpansionChanged: (ouvert) => setState(() => _detailsOuverts = ouvert),
-          childrenPadding: const EdgeInsets.fromLTRB(
-            AppSpacing.gutter,
-            AppSpacing.stackSm,
-            AppSpacing.gutter,
-            AppSpacing.gutter,
-          ),
-          children: [
-            CustomTextField(controller: _marqueController, label: 'Marque'),
+  /// Section "Détails spécifiques" : construite dynamiquement selon le
+  /// schéma renvoyé par l'API pour la catégorie + le type sélectionnés.
+  /// Vide (ex: catégorie "Autre") -> section masquée entièrement.
+  Widget _buildChampsDynamiques() {
+    if (_categorieId == null) return const SizedBox.shrink();
+
+    if (_chargementSchema) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.stackMd),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    if (_schema == null || _schema!.estVide) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.gutter),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Détails spécifiques', style: AppTextStyles.labelLg),
+          const SizedBox(height: AppSpacing.stackSm),
+          for (final champ in _schema!.structures) ...[
+            CustomTextField(
+              controller: _controllerStructure(champ.cle),
+              label: champ.requis ? '${champ.label} *' : champ.label,
+              validator: champ.requis
+                  ? (v) => (v == null || v.trim().isEmpty) ? '${champ.label} est requis' : null
+                  : null,
+            ),
             const SizedBox(height: AppSpacing.gutter),
-            CustomTextField(controller: _modeleController, label: 'Modèle'),
-            const SizedBox(height: AppSpacing.gutter),
-            CustomTextField(controller: _couleurController, label: 'Couleur'),
-            const SizedBox(height: AppSpacing.gutter),
-            CustomTextField(controller: _numeroSerieController, label: 'Numéro de série'),
-            const SizedBox(height: AppSpacing.gutter),
-            CustomTextField(controller: _plaqueController, label: 'Plaque (Ex: TG 1234 AB,)'),
-            const SizedBox(height: AppSpacing.gutter),
-            CustomTextField(controller: _etatController, label: 'État (neuf, usagé...)'),
           ],
-        ),
+          for (final champ in _schema!.json) ...[
+            _buildChampJson(champ),
+            const SizedBox(height: AppSpacing.gutter),
+          ],
+        ],
       ),
     );
+  }
+
+  Widget _buildChampJson(ChampDefinition champ) {
+    final label = champ.requis ? '${champ.label} *' : champ.label;
+
+    switch (champ.type) {
+      case 'select':
+        return DropdownButtonFormField<String>(
+          initialValue: _valeursSelect[champ.cle],
+          decoration: InputDecoration(labelText: label),
+          items: (champ.options ?? [])
+              .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+              .toList(),
+          onChanged: (valeur) => setState(() => _valeursSelect[champ.cle] = valeur),
+          validator: champ.requis
+              ? (v) => (v == null || v.isEmpty) ? '${champ.label} est requis' : null
+              : null,
+        );
+
+      case 'boolean':
+        return SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(champ.label, style: AppTextStyles.bodyMd),
+          activeColor: AppColors.primary,
+          value: _valeursBooleennes[champ.cle] ?? false,
+          onChanged: (valeur) => setState(() => _valeursBooleennes[champ.cle] = valeur),
+        );
+
+      case 'number':
+        return CustomTextField(
+          controller: _controllerJson(champ.cle),
+          label: label,
+          keyboardType: TextInputType.number,
+          validator: champ.requis
+              ? (v) => (v == null || v.trim().isEmpty) ? '${champ.label} est requis' : null
+              : null,
+        );
+
+      case 'textarea':
+        return CustomTextField(
+          controller: _controllerJson(champ.cle),
+          label: label,
+          keyboardType: TextInputType.multiline,
+          maxLines: 3,
+          validator: champ.requis
+              ? (v) => (v == null || v.trim().isEmpty) ? '${champ.label} est requis' : null
+              : null,
+        );
+
+      default: // text
+        return CustomTextField(
+          controller: _controllerJson(champ.cle),
+          label: label,
+          validator: champ.requis
+              ? (v) => (v == null || v.trim().isEmpty) ? '${champ.label} est requis' : null
+              : null,
+        );
+    }
   }
 
   Widget _buildSectionPhotos() {

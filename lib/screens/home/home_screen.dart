@@ -133,8 +133,24 @@ class _FeedTabState extends State<_FeedTab> {
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
+            // Barre du haut (logo + correspondances/notifications) :
+            // disparaît en scrollant vers le bas, réapparaît instantanément
+            // dès qu'on scrolle vers le haut, même très légèrement.
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              backgroundColor: AppColors.surface,
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              toolbarHeight: 100, // le logo fait 90px de haut, + marge
+              titleSpacing: 0,
+              title: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.containerPadding),
+                child: _buildBarreHaut(),
+              ),
+            ),
             SliverToBoxAdapter(
-              child: _buildHeader(context, utilisateur?.prenom, authProvider.estConnecte),
+              child: _buildCarteVerte(context, utilisateur?.prenom, authProvider.estConnecte),
             ),
             SliverToBoxAdapter(child: _buildFiltreType(publicationProvider)),
             SliverToBoxAdapter(child: _buildFiltreCategories(publicationProvider)),
@@ -171,155 +187,144 @@ class _FeedTabState extends State<_FeedTab> {
     );
   }
 
-  // En-tête vert ivoirien : avatar + salutation, icônes correspondances /
-  // notifications, puis barre de recherche non éditable (ouvre l'onglet
-  // Recherche).
-  Widget _buildHeader(BuildContext context, String? prenom, bool estConnecte) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  // Barre du haut (logo + icônes correspondances/notifications). Pas de
+  // SafeArea ici : le SliverAppBar qui l'englobe gère déjà l'espace sous
+  // la barre de statut automatiquement.
+  Widget _buildBarreHaut() {
+    return Row(
       children: [
-        // Barre blanche : wordmark YaKo + icônes correspondances/notifications.
-        SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.containerPadding,
-              AppSpacing.stackSm,
-              AppSpacing.containerPadding,
-              AppSpacing.stackSm,
-            ),
-            child: Row(
-              children: [
-                const _YaKoWordmark(),
-                const Spacer(),
-                Consumer<CorrespondanceProvider>(
-                  builder: (context, correspondanceProvider, _) {
-                    final enAttente = correspondanceProvider.nombreEnAttente;
-                    return IconButton(
-                      icon: Badge(
-                        isLabelVisible: enAttente > 0,
-                        label: Text('$enAttente'),
-                        backgroundColor: AppColors.accent,
-                        child: const Icon(Icons.compare_arrows, color: AppColors.primary),
-                      ),
-                      tooltip: 'Correspondances possibles',
-                      onPressed: () async {
-                        if (await exigerConnexion(context, message: 'Connecte-toi pour voir tes correspondances')) {
-                          if (!context.mounted) return;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const CorrespondancesListScreen()),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-                Consumer<NotificationProvider>(
-                  builder: (context, notificationProvider, _) {
-                    final nonLues = notificationProvider.nombreNonLues;
-                    return IconButton(
-                      icon: Badge(
-                        isLabelVisible: nonLues > 0,
-                        label: Text('$nonLues'),
-                        backgroundColor: AppColors.accent,
-                        child: const Icon(Icons.notifications_outlined, color: AppColors.primary),
-                      ),
-                      onPressed: () async {
-                        if (await exigerConnexion(context, message: 'Connecte-toi pour voir tes notifications')) {
-                          if (!context.mounted) return;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+        const _YaKoWordmark(),
+        const Spacer(),
+        Consumer<CorrespondanceProvider>(
+          builder: (context, correspondanceProvider, _) {
+            final enAttente = correspondanceProvider.nombreEnAttente;
+            return IconButton(
+              icon: Badge(
+                isLabelVisible: enAttente > 0,
+                label: Text('$enAttente'),
+                backgroundColor: AppColors.accent,
+                child: const Icon(Icons.compare_arrows, color: AppColors.primary),
+              ),
+              tooltip: 'Correspondances possibles',
+              onPressed: () async {
+                if (await exigerConnexion(context, message: 'Connecte-toi pour voir tes correspondances')) {
+                  if (!context.mounted) return;
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CorrespondancesListScreen()),
+                  );
+                }
+              },
+            );
+          },
         ),
-        // Carte verte arrondie : salutation (si connecté), recherche, et
-        // boutons Connexion/Inscription (si invité).
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.containerPadding),
-          padding: const EdgeInsets.all(AppSpacing.gutter),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (estConnecte) ...[
-                Text(
-                  'Bonjour, ${prenom ?? ''}',
-                  style: AppTextStyles.headlineSm.copyWith(color: Colors.white),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSpacing.stackSm),
-              ],
-              Material(
-                color: Colors.white.withValues(alpha: 0.15),
+        Consumer<NotificationProvider>(
+          builder: (context, notificationProvider, _) {
+            final nonLues = notificationProvider.nombreNonLues;
+            return IconButton(
+              icon: Badge(
+                isLabelVisible: nonLues > 0,
+                label: Text('$nonLues'),
+                backgroundColor: AppColors.accent,
+                child: const Icon(Icons.notifications_outlined, color: AppColors.primary),
+              ),
+              onPressed: () async {
+                if (await exigerConnexion(context, message: 'Connecte-toi pour voir tes notifications')) {
+                  if (!context.mounted) return;
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                  );
+                }
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // Carte verte arrondie : salutation (si connecté), recherche, et
+  // boutons Connexion/Inscription (si invité). Fait défiler normalement
+  // avec le reste du contenu (pas de comportement flottant ici).
+  Widget _buildCarteVerte(BuildContext context, String? prenom, bool estConnecte) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.stackSm),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.containerPadding),
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (estConnecte) ...[
+              Text(
+                'Bonjour, ${prenom ?? ''}',
+                style: AppTextStyles.headlineSm.copyWith(color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: AppSpacing.stackSm),
+            ],
+            Material(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: InkWell(
                 borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  onTap: widget.onOuvrirRecherche,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, color: Colors.white.withValues(alpha: 0.85), size: 20),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Rechercher un objet...',
-                          style: AppTextStyles.bodyMd.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
+                onTap: widget.onOuvrirRecherche,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, color: Colors.white.withValues(alpha: 0.85), size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Rechercher un objet...',
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              if (!estConnecte) ...[
-                const SizedBox(height: AppSpacing.stackSm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white, width: 1.5),
-                        ),
-                        child: const Text('Connexion'),
+            ),
+            if (!estConnecte) ...[
+              const SizedBox(height: AppSpacing.stackSm),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.stackSm),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
-                        ),
-                        child: const Text('Inscription'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white, width: 1.5),
                       ),
+                      child: const Text('Connexion'),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: AppSpacing.stackSm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                      ),
+                      child: const Text('Inscription'),
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.stackSm),
-      ],
+      ),
     );
   }
 
@@ -493,6 +498,7 @@ class _FeedTabState extends State<_FeedTab> {
     );
   }
 }
+
 /// Logo YaKo utilisé dans l'en-tête de l'accueil (le vrai fichier image,
 /// pas un texte stylisé).
 class _YaKoWordmark extends StatelessWidget {
@@ -505,8 +511,8 @@ class _YaKoWordmark extends StatelessWidget {
       // dans le fichier image. Ajuste la valeur (en pixels) au besoin.
       offset: const Offset(-8, 0),
       child: Image.asset(
-        'assets/images/logo2.png',
-        height: 90,
+        'assets/images/logo1.png',
+        height: 78,
         fit: BoxFit.contain,
       ),
     );

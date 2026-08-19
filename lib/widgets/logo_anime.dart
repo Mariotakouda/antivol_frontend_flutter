@@ -50,7 +50,7 @@ class _LogoAnimeState extends State<LogoAnime> with SingleTickerProviderStateMix
       child: ScaleTransition(
         scale: _echelle,
         child: Image.asset(
-          'assets/images/logo2.png',
+          'assets/images/logo1.png',
           width: widget.width,
           height: widget.height,
           fit: BoxFit.contain,

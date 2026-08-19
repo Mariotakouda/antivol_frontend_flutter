@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/api/api_client.dart';
@@ -5,6 +7,7 @@ import '../core/api/paginated_response.dart';
 import '../core/errors/api_exception.dart';
 import '../models/publication_model.dart';
 import '../models/resultat_verification_model.dart';
+import '../models/schema_champs_model.dart';
 
 class PublicationService {
   final Dio _dio = ApiClient.instance.dio;
@@ -59,6 +62,20 @@ class PublicationService {
     }
   }
 
+  /// Récupère la liste des champs (structurés + JSON) attendus pour cette
+  /// catégorie + type, pour construire le formulaire dynamiquement.
+  Future<SchemaChamps> champsPour({required int categorieId, required String type}) async {
+    try {
+      final response = await _dio.get('/publications/champs', queryParameters: {
+        'categorie_id': categorieId,
+        'type': type,
+      });
+      return SchemaChamps.fromJson(response.data);
+    } on DioException catch (e) {
+      throw ApiException.depuisDioException(e);
+    }
+  }
+
   Future<PublicationModel> creer({
     required int categorieId,
     required String titre,
@@ -78,6 +95,7 @@ class PublicationService {
     required String ville,
     required String pays,
     double? recompense,
+    Map<String, dynamic>? caracteristiques,
     List<XFile> images = const [],
   }) async {
     try {
@@ -102,6 +120,11 @@ class PublicationService {
         if (plaque != null && plaque.isNotEmpty) MapEntry('plaque', plaque),
         if (etat != null && etat.isNotEmpty) MapEntry('etat', etat),
         if (recompense != null) MapEntry('recompense', recompense.toString()),
+        // Envoyé en JSON stringifié : le backend le décode via
+        // prepareForValidation() (multipart/form-data ne transporte pas
+        // d'objets imbriqués nativement).
+        if (caracteristiques != null && caracteristiques.isNotEmpty)
+          MapEntry('caracteristiques', jsonEncode(caracteristiques)),
       ]);
 
       for (final image in images) {

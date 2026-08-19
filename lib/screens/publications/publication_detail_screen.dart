@@ -133,7 +133,30 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen> {
     }
   }
 
-  Future<void> _marquerRetrouvee() async {
+  Future<void> _marquerRetrouvee(String type) async {
+    final estPerdu = type == 'PERDU';
+
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(estPerdu ? 'As-tu retrouvé ton objet ?' : "L'objet a-t-il été rendu ?"),
+        content: Text(
+          estPerdu
+              ? "L'annonce sera clôturée. Tu ne pourras plus recevoir de messages à ce sujet."
+              : "L'annonce sera clôturée pour indiquer que l'objet a bien été remis à son propriétaire.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(estPerdu ? 'Oui, retrouvé' : 'Oui, remis'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme != true) return;
+
     setState(() => _actionStatutEnCours = true);
     try {
       final publication = await _service.marquerRetrouvee(_publication!.id);
@@ -294,8 +317,15 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.check_circle_outline),
-                tooltip: 'Marquer comme retrouvée',
-                onPressed: _actionStatutEnCours ? null : _marquerRetrouvee,
+                // Le libellé dépend du sens de l'annonce : pour un objet
+                // PERDU, c'est le propriétaire qui l'a retrouvé ; pour un
+                // objet TROUVE, c'est l'inventeur qui l'a rendu à son
+                // propriétaire. Même action côté serveur (statut ->
+                // RETROUVEE), juste un texte cohérent avec le contexte.
+                tooltip: publication.type == 'PERDU'
+                    ? 'Marquer comme retrouvée'
+                    : 'Marquer comme remise à son propriétaire',
+                onPressed: _actionStatutEnCours ? null : () => _marquerRetrouvee(publication.type),
               ),
             IconButton(icon: const Icon(Icons.edit_outlined), onPressed: _ouvrirModification),
           ] else

@@ -155,6 +155,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         backgroundColor: Colors.transparent,
         foregroundColor: AppColors.primary,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Ignorer'),
+        ),
+        leadingWidth: 90,
       ),
       body: SafeArea(
         top: false,

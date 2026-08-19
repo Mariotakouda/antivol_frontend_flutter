@@ -1,11 +1,9 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/primary_button.dart';
-import 'login_screen.dart';
 import 'otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -24,7 +22,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _villeController = TextEditingController();
   final _paysController = TextEditingController(text: 'Togo');
-  bool _motDePasseVisible = false;
 
   @override
   void dispose() {
@@ -41,11 +38,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _sInscrire() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final telephone = _telephoneController.text.trim();
+    final confirme = await _confirmerNumero(telephone);
+    if (!confirme) return;
+
+    if (!mounted) return;
     final authProvider = context.read<AuthProvider>();
     final succes = await authProvider.inscrire(
       nom: _nomController.text.trim(),
       prenom: _prenomController.text.trim(),
-      telephone: _telephoneController.text.trim(),
+      telephone: telephone,
       email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
       password: _passwordController.text,
       ville: _villeController.text.trim(),
@@ -57,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (succes) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => OtpVerificationScreen(telephone: _telephoneController.text.trim()),
+          builder: (_) => OtpVerificationScreen(telephone: telephone),
         ),
       );
     } else {
@@ -65,6 +67,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SnackBar(content: Text(authProvider.erreur ?? 'Erreur lors de l\'inscription')),
       );
     }
+  }
+
+  /// Confirmation du numéro avant envoi réel, façon WhatsApp : attrape les
+  /// fautes de frappe avant même d'appeler l'API (l'OTP qui suit vérifie
+  /// autre chose — que le SMS est bien reçu — les deux se complètent).
+  Future<bool> _confirmerNumero(String telephone) async {
+    final resultat = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        icon: const Icon(Icons.smartphone_outlined, color: AppColors.primary, size: 32),
+        title: const Text('Ce numéro est-il correct ?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Tu recevras un code de vérification à ce numéro :"),
+            const SizedBox(height: AppSpacing.stackSm),
+            Text(
+              telephone,
+              style: AppTextStyles.headlineSm.copyWith(color: AppColors.primary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Modifier'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continuer'),
+          ),
+        ],
+      ),
+    );
+
+    return resultat == true;
   }
 
   @override
@@ -104,138 +143,72 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.stackLg),
-                // Carte de formulaire (fond blanc, radius 20px, ombre douce) —
-                // même traitement visuel que l'écran de connexion, pour que
-                // les deux écrans du flux d'authentification soient cohérents.
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.containerPadding),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                    border: Border.all(color: AppColors.surfaceContainer),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _prenomController,
+                        label: 'Prénom',
+                        prefixIcon: Icons.person_outline,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              controller: _prenomController,
-                              label: 'Prénom',
-                              prefixIcon: Icons.person_outline,
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.gutter),
-                          Expanded(
-                            child: CustomTextField(
-                              controller: _nomController,
-                              label: 'Nom',
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                            ),
-                          ),
-                        ],
+                    ),
+                    const SizedBox(width: AppSpacing.gutter),
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _nomController,
+                        label: 'Nom',
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
                       ),
-                      const SizedBox(height: AppSpacing.stackMd),
-                      CustomTextField(
-                        controller: _telephoneController,
-                        label: 'Téléphone',
-                        keyboardType: TextInputType.phone,
-                        prefixIcon: Icons.phone_outlined,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.stackMd),
-                      CustomTextField(
-                        controller: _emailController,
-                        label: 'Email (optionnel)',
-                        keyboardType: TextInputType.emailAddress,
-                        prefixIcon: Icons.mail_outline,
-                      ),
-                      const SizedBox(height: AppSpacing.stackMd),
-                      CustomTextField(
-                        controller: _passwordController,
-                        label: 'Mot de passe',
-                        obscureText: !_motDePasseVisible,
-                        prefixIcon: Icons.lock_outline,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _motDePasseVisible
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () => setState(
-                            () => _motDePasseVisible = !_motDePasseVisible,
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Requis';
-                          if (v.length < 8) return 'Minimum 8 caractères';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.stackMd),
-                      CustomTextField(
-                        controller: _villeController,
-                        label: 'Ville',
-                        prefixIcon: Icons.location_city_outlined,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.stackMd),
-                      CustomTextField(
-                        controller: _paysController,
-                        label: 'Pays',
-                        prefixIcon: Icons.public_outlined,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.stackLg),
-                      PrimaryButton(
-                        label: "S'inscrire",
-                        chargement: authProvider.chargement,
-                        onPressed: _sInscrire,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.stackMd),
+                CustomTextField(
+                  controller: _telephoneController,
+                  label: 'Téléphone',
+                  keyboardType: TextInputType.phone,
+                  prefixIcon: Icons.phone_outlined,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                ),
+                const SizedBox(height: AppSpacing.stackMd),
+                CustomTextField(
+                  controller: _emailController,
+                  label: 'Email (optionnel)',
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: Icons.mail_outline,
+                ),
+                const SizedBox(height: AppSpacing.stackMd),
+                CustomTextField(
+                  controller: _passwordController,
+                  label: 'Mot de passe',
+                  obscureText: true,
+                  prefixIcon: Icons.lock_outline,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Requis';
+                    if (v.length < 8) return 'Minimum 8 caractères';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppSpacing.stackMd),
+                CustomTextField(
+                  controller: _villeController,
+                  label: 'Ville',
+                  prefixIcon: Icons.location_city_outlined,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                ),
+                const SizedBox(height: AppSpacing.stackMd),
+                CustomTextField(
+                  controller: _paysController,
+                  label: 'Pays',
+                  prefixIcon: Icons.public_outlined,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
                 ),
                 const SizedBox(height: AppSpacing.stackLg),
-                // Lien vers la connexion — absent auparavant : un utilisateur
-                // arrivé ici par erreur n'avait que la flèche retour pour s'en sortir.
-                Center(
-                  child: RichText(
-                    text: TextSpan(
-                      style: AppTextStyles.bodyMd.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                      children: [
-                        const TextSpan(text: 'Déjà un compte ? '),
-                        TextSpan(
-                          text: 'Se connecter',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
+                PrimaryButton(
+                  label: "S'inscrire",
+                  chargement: authProvider.chargement,
+                  onPressed: _sInscrire,
                 ),
                 const SizedBox(height: AppSpacing.stackLg),
               ],
