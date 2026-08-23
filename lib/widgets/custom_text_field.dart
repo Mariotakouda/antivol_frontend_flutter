@@ -35,8 +35,8 @@ class CustomTextField extends StatelessWidget {
         prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
         suffixIcon: suffixIcon,
         // Pas de `border` explicite ici : le champ hérite du style défini
-        // dans AppTheme.light (inputDecorationTheme) — radius 8px, focus
-        // vert ivoirien. On ne redéfinit que le strict nécessaire.
+        // dans AppTheme.light (inputDecorationTheme) — radius 12px, focus
+        // vert togolais. On ne redéfinit que le strict nécessaire.
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/theme/app_theme.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String label;
@@ -25,7 +26,10 @@ class PrimaryButton extends StatelessWidget {
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.onAccent,
+                ),
               )
             : Text(label),
       ),

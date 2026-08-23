@@ -106,6 +106,10 @@ class _PublicationDetailScreenState extends State<PublicationDetailScreen> {
         builder: (_) => ConversationDetailScreen(
           conversationId: conversation.id,
           titre: autre?.nomComplet ?? 'Conversation',
+          photoUrl: autre?.photoProfil,
+          publicationTitre: _publication?.titre,
+          publicationImage: _publication?.images.isNotEmpty == true ? _publication!.images.first.url : null,
+          publicationEstPerdue: _publication?.type.toUpperCase() == 'PERDU',
         ),
       ),
     );

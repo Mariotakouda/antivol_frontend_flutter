@@ -34,4 +34,15 @@ class ConversationService {
       throw ApiException.depuisDioException(e);
     }
   }
+
+  /// Supprime une conversation.
+  /// NOTE : suppose une route Laravel `DELETE /conversations/{id}` — à
+  /// vérifier/ajouter côté backend si elle n'existe pas encore.
+  Future<void> supprimer(int id) async {
+    try {
+      await _dio.delete('/conversations/$id');
+    } on DioException catch (e) {
+      throw ApiException.depuisDioException(e);
+    }
+  }
 }

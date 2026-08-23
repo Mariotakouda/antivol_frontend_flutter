@@ -101,4 +101,25 @@ class ConversationProvider extends ChangeNotifier {
   List<MessageModel> messagesDe(int conversationId) {
     return List.unmodifiable(_messages[conversationId] ?? []);
   }
+
+  /// Supprime une conversation localement + côté serveur. Si l'appel serveur
+  /// échoue, la conversation est restaurée dans la liste et on renvoie false
+  /// pour que l'écran puisse afficher une erreur.
+  Future<bool> supprimerConversation(int conversationId) async {
+    final index = _conversations.indexWhere((c) => c.id == conversationId);
+    if (index == -1) return true;
+
+    final sauvegarde = _conversations[index];
+    _conversations.removeAt(index);
+    notifyListeners();
+
+    try {
+      await _service.supprimer(conversationId);
+      return true;
+    } catch (_) {
+      _conversations.insert(index, sauvegarde);
+      notifyListeners();
+      return false;
+    }
+  }
 }

@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/auth_header.dart';
+import '../../widgets/otp_input.dart';
 import '../../widgets/primary_button.dart';
 import '../home/home_screen.dart';
 
@@ -122,168 +123,40 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  String get _minutesSecondes {
-    final m = (_secondesRestantes ~/ 60).toString().padLeft(2, '0');
-    final s = (_secondesRestantes % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final peutRenvoyer = _secondesRestantes == 0 && !_envoiEnCours;
+    final peutRevenirEnArriere = Navigator.of(context).canPop();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.primary,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        top: false,
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.containerPadding,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthHeader(
+              title: 'Vérifie ton numéro',
+              subtitle: 'Un code à 6 chiffres a été envoyé au ${widget.telephone}',
+              showLogo: false,
+              onBack: peutRevenirEnArriere ? () => Navigator.of(context).pop() : null,
             ),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.containerPadding),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: Border.all(color: AppColors.surfaceContainer),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
+            AuthSheet(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Icône dans un cercle vert clair
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: AppColors.statusGreenBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.smartphone_outlined,
-                      color: AppColors.primary,
-                      size: 32,
-                    ),
+                  const Center(child: AuthIconBadge(icon: Icons.sms_outlined)),
+                  const SizedBox(height: AppSpacing.stackLg),
+                  OtpDigitsRow(
+                    controllers: _digitControllers,
+                    focusNodes: _focusNodes,
+                    onChanged: _onDigitChanged,
                   ),
                   const SizedBox(height: AppSpacing.stackLg),
-                  const Text(
-                    'Vérifiez votre numéro',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.headlineMd,
+                  OtpResendCountdown(
+                    secondesRestantes: _secondesRestantes,
+                    envoiEnCours: _envoiEnCours,
+                    onRenvoyer: _renvoyerCode,
                   ),
-                  const SizedBox(height: AppSpacing.stackSm),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      'Un code à 6 chiffres a été envoyé au ${widget.telephone}',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyMd.copyWith(
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.stackLg),
-                  // 6 cases OTP
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(6, (index) {
-                      final actif = _focusNodes[index].hasFocus ||
-                          _digitControllers[index].text.isNotEmpty;
-                      return SizedBox(
-                        width: 44,
-                        height: 56,
-                        child: TextField(
-                          controller: _digitControllers[index],
-                          focusNode: _focusNodes[index],
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          maxLength: 1,
-                          style: AppTextStyles.headlineSm,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: InputDecoration(
-                            counterText: '',
-                            contentPadding: EdgeInsets.zero,
-                            filled: true,
-                            fillColor: AppColors.background,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
-                              borderSide: BorderSide(
-                                color: actif
-                                    ? AppColors.primary
-                                    : AppColors.outlineVariant,
-                                width: 2,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
-                              borderSide: BorderSide(
-                                color: actif
-                                    ? AppColors.primary
-                                    : AppColors.outlineVariant,
-                                width: 2,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
-                              borderSide: const BorderSide(
-                                color: AppColors.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          onChanged: (value) => _onDigitChanged(index, value),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: AppSpacing.stackLg),
-                  // Compte à rebours / lien de renvoi
-                  if (_secondesRestantes > 0)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.schedule,
-                          size: 14,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text.rich(
-                          TextSpan(
-                            style: AppTextStyles.labelSm.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                            children: [
-                              const TextSpan(text: 'Renvoyer le code dans '),
-                              TextSpan(
-                                text: _minutesSecondes,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    TextButton(
-                      onPressed: peutRenvoyer ? _renvoyerCode : null,
-                      child: Text(_envoiEnCours ? 'Envoi...' : 'Renvoyer le code'),
-                    ),
                   const SizedBox(height: AppSpacing.stackMd),
                   PrimaryButton(
                     label: 'Vérifier',
@@ -293,7 +166,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

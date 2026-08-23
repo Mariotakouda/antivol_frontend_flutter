@@ -5,6 +5,8 @@ class ConversationModel {
   final int id;
   final int? publicationId;
   final String? publicationTitre;
+  final String? publicationType; // PERDU | TROUVE
+  final String? publicationImage;
   final List<ParticipantModel> participants;
   final MessageModel? dernierMessage;
   final DateTime dateCreation;
@@ -13,10 +15,14 @@ class ConversationModel {
     required this.id,
     this.publicationId,
     this.publicationTitre,
+    this.publicationType,
+    this.publicationImage,
     required this.participants,
     this.dernierMessage,
     required this.dateCreation,
   });
+
+  bool get publicationEstPerdue => publicationType?.toUpperCase() == 'PERDU';
 
   /// Renvoie l'autre participant (pas l'utilisateur courant), pratique pour l'affichage.
   ParticipantModel? autreParticipant(int monUserId) {
@@ -33,6 +39,13 @@ class ConversationModel {
       id: json['id'] as int,
       publicationId: publication != null && publication.isNotEmpty ? publication['id'] as int? : null,
       publicationTitre: publication != null && publication.isNotEmpty ? publication['titre'] as String? : null,
+      publicationType: publication != null && publication.isNotEmpty ? publication['type'] as String? : null,
+      publicationImage: publication != null &&
+              publication.isNotEmpty &&
+              publication['images'] is List &&
+              (publication['images'] as List).isNotEmpty
+          ? (publication['images'] as List).first['url'] as String?
+          : null,
       participants: json['participants'] != null
           ? (json['participants'] as List).map((p) => ParticipantModel.fromJson(p)).toList()
           : [],

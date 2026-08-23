@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/auth_header.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/primary_button.dart';
 import 'otp_verification_screen.dart';
@@ -22,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _villeController = TextEditingController();
   final _paysController = TextEditingController(text: 'Togo');
+  bool _motDePasseVisible = false;
 
   @override
   void dispose() {
@@ -112,108 +114,139 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.primary,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.containerPadding,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: AppSpacing.stackMd),
-                const Text(
-                  'Inscription',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.displayLg,
-                ),
-                const SizedBox(height: AppSpacing.stackSm),
-                Text(
-                  'Rejoignez la communauté pour retrouver vos objets perdus.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyMd.copyWith(
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.stackLg),
-                Row(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthHeader(
+              title: 'Créer un compte',
+              subtitle: 'Rejoins la communauté pour retrouver tes objets.',
+              showLogo: false,
+              onBack: () => Navigator.of(context).pop(),
+            ),
+            AuthSheet(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: CustomTextField(
-                        controller: _prenomController,
-                        label: 'Prénom',
-                        prefixIcon: Icons.person_outline,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
+                    const _SectionLabel('Identité'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomTextField(
+                            controller: _prenomController,
+                            label: 'Prénom',
+                            prefixIcon: Icons.person_outline,
+                            validator: (v) =>
+                                (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.gutter),
+                        Expanded(
+                          child: CustomTextField(
+                            controller: _nomController,
+                            label: 'Nom',
+                            validator: (v) =>
+                                (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: AppSpacing.gutter),
-                    Expanded(
-                      child: CustomTextField(
-                        controller: _nomController,
-                        label: 'Nom',
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
+                    const SizedBox(height: AppSpacing.stackLg),
+                    const _SectionLabel('Contact'),
+                    CustomTextField(
+                      controller: _telephoneController,
+                      label: 'Téléphone',
+                      keyboardType: TextInputType.phone,
+                      prefixIcon: Icons.phone_outlined,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
                     ),
+                    const SizedBox(height: AppSpacing.stackMd),
+                    CustomTextField(
+                      controller: _emailController,
+                      label: 'Email (optionnel)',
+                      keyboardType: TextInputType.emailAddress,
+                      prefixIcon: Icons.mail_outline,
+                    ),
+                    const SizedBox(height: AppSpacing.stackLg),
+                    const _SectionLabel('Sécurité'),
+                    CustomTextField(
+                      controller: _passwordController,
+                      label: 'Mot de passe',
+                      obscureText: !_motDePasseVisible,
+                      prefixIcon: Icons.lock_outline,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _motDePasseVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            setState(() => _motDePasseVisible = !_motDePasseVisible),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Requis';
+                        if (v.length < 8) return 'Minimum 8 caractères';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '8 caractères minimum.',
+                      style: AppTextStyles.labelSm.copyWith(color: AppColors.outline),
+                    ),
+                    const SizedBox(height: AppSpacing.stackLg),
+                    const _SectionLabel('Localisation'),
+                    CustomTextField(
+                      controller: _villeController,
+                      label: 'Ville',
+                      prefixIcon: Icons.location_city_outlined,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.stackMd),
+                    CustomTextField(
+                      controller: _paysController,
+                      label: 'Pays',
+                      prefixIcon: Icons.public_outlined,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.stackLg),
+                    PrimaryButton(
+                      label: "S'inscrire",
+                      chargement: authProvider.chargement,
+                      onPressed: _sInscrire,
+                    ),
+                    const SizedBox(height: AppSpacing.stackSm),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.stackMd),
-                CustomTextField(
-                  controller: _telephoneController,
-                  label: 'Téléphone',
-                  keyboardType: TextInputType.phone,
-                  prefixIcon: Icons.phone_outlined,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                ),
-                const SizedBox(height: AppSpacing.stackMd),
-                CustomTextField(
-                  controller: _emailController,
-                  label: 'Email (optionnel)',
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.mail_outline,
-                ),
-                const SizedBox(height: AppSpacing.stackMd),
-                CustomTextField(
-                  controller: _passwordController,
-                  label: 'Mot de passe',
-                  obscureText: true,
-                  prefixIcon: Icons.lock_outline,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Requis';
-                    if (v.length < 8) return 'Minimum 8 caractères';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.stackMd),
-                CustomTextField(
-                  controller: _villeController,
-                  label: 'Ville',
-                  prefixIcon: Icons.location_city_outlined,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                ),
-                const SizedBox(height: AppSpacing.stackMd),
-                CustomTextField(
-                  controller: _paysController,
-                  label: 'Pays',
-                  prefixIcon: Icons.public_outlined,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                ),
-                const SizedBox(height: AppSpacing.stackLg),
-                PrimaryButton(
-                  label: "S'inscrire",
-                  chargement: authProvider.chargement,
-                  onPressed: _sInscrire,
-                ),
-                const SizedBox(height: AppSpacing.stackLg),
-              ],
+              ),
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Petit intitulé de section (eyebrow) pour donner une hiérarchie au long
+/// formulaire d'inscription — 7 champs à plat sans repère sont difficiles
+/// à scanner visuellement, ces libellés découpent le parcours.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.stackSm),
+      child: Text(
+        label.toUpperCase(),
+        style: AppTextStyles.labelSm.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
         ),
       ),
     );

@@ -1,8 +1,8 @@
 class ApiEndpoints {
-  // Emulateur Android : 10.0.2.2 pointe vers le localhost de ta machine hôte.
-  // Emulateur iOS / navigateur web : 127.0.0.1 fonctionne directement.
-  // Téléphone physique : remplace par l'IP locale de ta machine (ex: 192.168.1.X).
-  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+  // Backend en ligne sur Render (accessible depuis n'importe quel appareil,
+  // émulateur ou téléphone physique — plus besoin de jongler entre
+  // 10.0.2.2 / 127.0.0.1 / IP locale).
+  static const String baseUrl = 'https://antivole-api.onrender.com/api/v1';
 
   // Auth
   static const String register = '/auth/register';

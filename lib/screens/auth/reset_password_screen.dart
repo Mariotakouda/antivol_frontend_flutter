@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/auth_header.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/otp_input.dart';
 import '../../widgets/primary_button.dart';
 import '../home/home_screen.dart';
 
@@ -138,194 +139,87 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  String get _minutesSecondes {
-    final m = (_secondesRestantes ~/ 60).toString().padLeft(2, '0');
-    final s = (_secondesRestantes % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final peutRenvoyer = _secondesRestantes == 0 && !_envoiEnCours;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.primary,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leading: TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Ignorer'),
-        ),
-        leadingWidth: 90,
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.containerPadding,
-            vertical: AppSpacing.stackLg,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.containerPadding),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: Border.all(color: AppColors.surfaceContainer),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: const BoxDecoration(
-                      color: AppColors.statusGreenBg,
-                      shape: BoxShape.circle,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthHeader(
+              title: 'Nouveau mot de passe',
+              subtitle: 'Code envoyé au ${widget.telephone}',
+              showLogo: false,
+              // Étape 2 d'un parcours de récupération : "Ignorer" plutôt
+              // qu'une flèche retour, pour ne pas laisser croire qu'on peut
+              // revenir à l'étape précédente en gardant le code déjà saisi.
+              backLabel: 'Ignorer',
+              onBack: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            ),
+            AuthSheet(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OtpDigitsRow(
+                      controllers: _digitControllers,
+                      focusNodes: _focusNodes,
+                      onChanged: _onDigitChanged,
                     ),
-                    child: const Icon(
-                      Icons.smartphone_outlined,
-                      color: AppColors.primary,
-                      size: 32,
+                    const SizedBox(height: AppSpacing.stackMd),
+                    OtpResendCountdown(
+                      secondesRestantes: _secondesRestantes,
+                      envoiEnCours: _envoiEnCours,
+                      onRenvoyer: _renvoyerCode,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.stackLg),
-                  const Text(
-                    'Nouveau mot de passe',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.headlineMd,
-                  ),
-                  const SizedBox(height: AppSpacing.stackSm),
-                  Text(
-                    'Un code à 6 chiffres a été envoyé au ${widget.telephone}',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: AppSpacing.stackLg),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(6, (index) {
-                      final actif = _focusNodes[index].hasFocus ||
-                          _digitControllers[index].text.isNotEmpty;
-                      return SizedBox(
-                        width: 44,
-                        height: 56,
-                        child: TextField(
-                          controller: _digitControllers[index],
-                          focusNode: _focusNodes[index],
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          maxLength: 1,
-                          style: AppTextStyles.headlineSm,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: InputDecoration(
-                            counterText: '',
-                            contentPadding: EdgeInsets.zero,
-                            filled: true,
-                            fillColor: AppColors.background,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
-                              borderSide: BorderSide(
-                                color: actif ? AppColors.primary : AppColors.outlineVariant,
-                                width: 2,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
-                              borderSide: BorderSide(
-                                color: actif ? AppColors.primary : AppColors.outlineVariant,
-                                width: 2,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.input),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                            ),
-                          ),
-                          onChanged: (value) => _onDigitChanged(index, value),
+                    const SizedBox(height: AppSpacing.stackLg),
+                    CustomTextField(
+                      controller: _passwordController,
+                      label: 'Nouveau mot de passe',
+                      obscureText: !_motDePasseVisible,
+                      prefixIcon: Icons.lock_outline,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _motDePasseVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                         ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: AppSpacing.stackMd),
-                  if (_secondesRestantes > 0)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.schedule, size: 14, color: AppColors.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text.rich(
-                          TextSpan(
-                            style: AppTextStyles.labelSm.copyWith(color: AppColors.onSurfaceVariant),
-                            children: [
-                              const TextSpan(text: 'Renvoyer le code dans '),
-                              TextSpan(
-                                text: _minutesSecondes,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    Center(
-                      child: TextButton(
-                        onPressed: peutRenvoyer ? _renvoyerCode : null,
-                        child: Text(_envoiEnCours ? 'Envoi...' : 'Renvoyer le code'),
+                        onPressed: () => setState(() => _motDePasseVisible = !_motDePasseVisible),
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Le mot de passe est requis';
+                        if (value.length < 8) return '8 caractères minimum';
+                        return null;
+                      },
                     ),
-                  const SizedBox(height: AppSpacing.stackLg),
-                  CustomTextField(
-                    controller: _passwordController,
-                    label: 'Nouveau mot de passe',
-                    obscureText: !_motDePasseVisible,
-                    prefixIcon: Icons.lock_outline,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _motDePasseVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      ),
-                      onPressed: () => setState(() => _motDePasseVisible = !_motDePasseVisible),
+                    const SizedBox(height: AppSpacing.stackMd),
+                    CustomTextField(
+                      controller: _confirmationController,
+                      label: 'Confirmer le mot de passe',
+                      obscureText: !_motDePasseVisible,
+                      prefixIcon: Icons.lock_outline,
+                      validator: (value) {
+                        if (value != _passwordController.text) {
+                          return 'Les mots de passe ne correspondent pas';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Le mot de passe est requis';
-                      if (value.length < 8) return '8 caractères minimum';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.stackMd),
-                  CustomTextField(
-                    controller: _confirmationController,
-                    label: 'Confirmer le mot de passe',
-                    obscureText: !_motDePasseVisible,
-                    prefixIcon: Icons.lock_outline,
-                    validator: (value) {
-                      if (value != _passwordController.text) return 'Les mots de passe ne correspondent pas';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.stackLg),
-                  PrimaryButton(
-                    label: 'Réinitialiser',
-                    chargement: authProvider.chargement,
-                    onPressed: _reinitialiser,
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.stackLg),
+                    PrimaryButton(
+                      label: 'Réinitialiser',
+                      chargement: authProvider.chargement,
+                      onPressed: _reinitialiser,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
